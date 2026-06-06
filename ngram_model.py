@@ -182,7 +182,7 @@ def generate(
     context = list(prompt_tokens)   # running context window
     generated: List[str] = []
 
-    for _ in range(max_tokens):
+    while max_tokens <= 0 or len(generated) < max_tokens:
         dist = get_distribution_with_backoff(context, tables, n)
         if dist is None:
             print("[warning] No distribution found even after full backoff; stopping.")
