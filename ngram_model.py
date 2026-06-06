@@ -216,9 +216,9 @@ def prompt_int(msg: str) -> int:
         raw = input(msg).strip()
         try:
             val = int(raw)
-            if val > 0:
+            if val >= 0:
                 return val
-            print("  Please enter a positive integer.")
+            print("  Please enter a non-negative integer.")
         except ValueError:
             print("  Invalid input — please enter a whole number.")
 
@@ -280,46 +280,48 @@ def main() -> None:
     # ── 4 & 5. user input ─────────────────────────────────────────────────────
     max_tokens = prompt_int("How many tokens to generate? ")
 
+    while True:
+        prompt_str = prompt_string("Enter prompt: ")
+        if prompt_str == "q":
+            break
 
-    prompt_str = prompt_string("Enter prompt: ")
-
-    # empty input → treat as BOS (start of sequence)
-    if not prompt_str:
-        prompt_tokens = [BOS]
-        print("  (no prompt given — seeding with <BOS>)")
-    else:
-        prompt_tokens = re.findall(r"[A-Za-z0-9']+|[^A-Za-z0-9'\s]", prompt_str)
-        prompt_tokens = [t.lower() for t in prompt_tokens if t.strip()]
-
-    # ── 6. validate + generate ────────────────────────────────────────────────
-    validate_prompt(prompt_tokens, vocab)
-
-    display_prompt = "<BOS>" if prompt_tokens == [BOS] else " ".join(prompt_tokens)
-    print(f"\nGenerating up to {max_tokens} tokens "
-          f"(temperature={args.temperature}) …"
-          f"\nPrompt context: {display_prompt}\n")
-
-    generated = generate(
-        prompt_tokens=prompt_tokens,
-        tables=tables,
-        n=args.n,
-        max_tokens=max_tokens,
-        temperature=args.temperature,
-    )
-
-    # exclude BOS from the rendered output — it's a control token, not surface text
-    visible_tokens = [t for t in prompt_tokens if t != BOS] + generated
-    result = visible_tokens[0] if visible_tokens else ""
-    for tok in visible_tokens[1:]:
-        if re.match(r"^[^A-Za-z0-9']", tok):   # punctuation → no space
-            result += tok
+        # empty input → treat as BOS (start of sequence)
+        if not prompt_str:
+            prompt_tokens = [BOS]
+            print("  (no prompt given — seeding with <BOS>)")
         else:
-            result += " " + tok
+            prompt_tokens = re.findall(r"[A-Za-z0-9']+|[^A-Za-z0-9'\s]", prompt_str)
+            prompt_tokens = [t.lower() for t in prompt_tokens if t.strip()]
 
-    print("─" * 60)
-    print(result)
-    print("─" * 60)
-    print(f"\n[{len(generated)} token(s) generated]")
+        # ── 6. validate + generate ────────────────────────────────────────────────
+        validate_prompt(prompt_tokens, vocab)
+
+        display_prompt = "<BOS>" if prompt_tokens == [BOS] else " ".join(prompt_tokens)
+        print(f"\nGenerating up to {max_tokens} tokens "
+            f"(temperature={args.temperature}) …"
+            f"\nPrompt context: {display_prompt}\n")
+
+        generated = generate(
+            prompt_tokens=prompt_tokens,
+            tables=tables,
+            n=args.n,
+            max_tokens=max_tokens,
+            temperature=args.temperature,
+        )
+
+        # exclude BOS from the rendered output — it's a control token, not surface text
+        visible_tokens = [t for t in prompt_tokens if t != BOS] + generated
+        result = visible_tokens[0] if visible_tokens else ""
+        for tok in visible_tokens[1:]:
+            if re.match(r"^[^A-Za-z0-9']", tok):   # punctuation → no space
+                result += tok
+            else:
+                result += " " + tok
+
+        print("─" * 60)
+        print(result)
+        print("─" * 60)
+        print(f"\n[{len(generated)} token(s) generated]")
 
 
 if __name__ == "__main__":
