@@ -224,11 +224,8 @@ def prompt_int(msg: str) -> int:
 
 
 def prompt_string(msg: str) -> str:
-    while True:
-        raw = input(msg).strip()
-        if raw:
-            return raw
-        print("  Input cannot be empty.")
+    """Return the user's input string, or an empty string to signal BOS."""
+    return input(msg).strip()
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -282,17 +279,25 @@ def main() -> None:
 
     # ── 4 & 5. user input ─────────────────────────────────────────────────────
     max_tokens = prompt_int("How many tokens to generate? ")
+
+
     prompt_str = prompt_string("Enter prompt: ")
 
-    # tokenise the prompt the same way as the corpus
-    prompt_tokens = re.findall(r"[A-Za-z0-9']+|[^A-Za-z0-9'\s]", prompt_str)
-    prompt_tokens = [t.lower() for t in prompt_tokens if t.strip()]
+    # empty input → treat as BOS (start of sequence)
+    if not prompt_str:
+        prompt_tokens = [BOS]
+        print("  (no prompt given — seeding with <BOS>)")
+    else:
+        prompt_tokens = re.findall(r"[A-Za-z0-9']+|[^A-Za-z0-9'\s]", prompt_str)
+        prompt_tokens = [t.lower() for t in prompt_tokens if t.strip()]
 
     # ── 6. validate + generate ────────────────────────────────────────────────
     validate_prompt(prompt_tokens, vocab)
 
+    display_prompt = "<BOS>" if prompt_tokens == [BOS] else " ".join(prompt_tokens)
     print(f"\nGenerating up to {max_tokens} tokens "
-          f"(temperature={args.temperature}) …\n")
+          f"(temperature={args.temperature}) …"
+          f"\nPrompt context: {display_prompt}\n")
 
     generated = generate(
         prompt_tokens=prompt_tokens,
@@ -302,10 +307,10 @@ def main() -> None:
         temperature=args.temperature,
     )
 
-    # pretty-print: re-attach punctuation to preceding word
-    output_tokens = prompt_tokens + generated
-    result = output_tokens[0] if output_tokens else ""
-    for tok in output_tokens[1:]:
+    # exclude BOS from the rendered output — it's a control token, not surface text
+    visible_tokens = [t for t in prompt_tokens if t != BOS] + generated
+    result = visible_tokens[0] if visible_tokens else ""
+    for tok in visible_tokens[1:]:
         if re.match(r"^[^A-Za-z0-9']", tok):   # punctuation → no space
             result += tok
         else:
